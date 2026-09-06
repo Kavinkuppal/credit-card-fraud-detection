@@ -1,0 +1,604 @@
+---
+layout: default
+title: ML 7641 Final Report
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ site.title }}</title>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <h1>ML 7641 Project Proposal</h1>
+      <h2>Fraud Detection for Credit Card Transactions</h2>
+      <p><strong>Group 23</strong> | Dr. Mahdi Roozbhani | 2 December 2025</p>
+    </header>
+
+    <hr>
+
+    <section>
+      <h2>Introduction and Background</h2>
+      <p>
+        Fraudulent activity has become a major issue in areas like credit card transactions and insurance claims, 
+        causing significant financial losses for the institutions involved. To address this, researchers have leaned 
+        on advanced machine learning and deep learning techniques, developing ways to extract meaningful features and 
+        then applying a range of binary classification models. From there, ensemble approaches have emerged as a promising 
+        path toward building effective solutions to this challenge.
+      </p>
+    </section>
+
+    <section>
+      <h2>Literature Review</h2>
+      <p>Fraud detection has seen greater importance as digital transactions expand and fraud rates rise, increasing the need for systems that can accurately identify misuse while remaining efficient [1].  Payment card fraud losses cost “$33.45 billion in 2022 and $33.83 billion in 2023” and “consumers lost nearly $8.8 billion to fraud in 2022” [1].</p>
+      <p>Several supervised and unsupervised methods have been deemed effective for credit card fraud detection. At the transaction level, when comparing the performance of KNN, SVM, and Artificial Neural Networks in credit card fraud detection using accuracy score, KNN and Artificial Neural Networks were found to have performed better than SVM [2]. Furthermore, when using convolution neural networks for feature extraction, machine learning methods including Naive Bayes, SVM, decision tree, and KNN achieved up to 97% accuracy in fraud detection [3]. It was also found that probability-based similarity measures such as KNN can improve fraud classification while reducing computational costs compared to oversampling techniques and computationally heavy models like XGBoost [1].</p>
+      
+      
+      <h2>Dataset Description and Link</h2>
+      <p>
+        This dataset focuses on fraud detection within credit card transactions. It was developed using the 
+        Sparkov Data Generation simulator to create two years’ worth of simulated data for fraudulent and legitimate 
+        credit card transactions from 2019 to 2020.
+      </p>
+      <ul>
+        <li><strong>Customer Information:</strong> address, date of birth, gender, name</li>
+        <li><strong>Transaction Details:</strong> transaction number, credit card number, transaction amount, and date</li>
+        <li><strong>Merchant Details:</strong> name, category, latitude and longitude</li>
+        <li><strong>Target Variable:</strong> Fraudulent (1) vs. Legitimate (0)</li>
+      </ul>
+      <h3>Links</h3>
+        <ul>
+        <li><strong>Dataset:</strong> <a href="https://www.kaggle.com/datasets/kartik2112/fraud-detection/data">Link</a></li>
+        <li><strong>Simulator:</strong> <a href="https://github.com/namebrandon/Sparkov_Data_Generation">Link</a></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Problem Definition</h2>
+      <h3>Problem</h3>
+      <p>
+        Fraud is one of the most common challenges in today’s financial environment. It decreases trust, causes 
+        heavy economic costs, and creates ripple effects that impact businesses, customers, and society. Because 
+        fraudulent activities are often hidden within millions of legitimate transactions, they are difficult to detect. 
+        This leaves banks and insurance companies exposed and makes people lose confidence in the system.
+      </p>
+      <p>
+        Currently, the manual process of auditing and checking for unusual activity to identify fraudulent activities is 
+        too time-intensive and can have human errors; there needs to be a more systematic way to identify unusual cases. 
+        Because fraud happens so rarely compared to normal transactions, it’s hard for traditional models to catch it without 
+        making mistakes. This leaves banks and insurance companies exposed and makes people lose confidence in the system.
+
+      </p>
+
+      <h3>Motivation</h3>
+      <p>
+        The motivation for this project comes from the huge impact fraud has on both companies and everyday people. Not only does this increase fees and premiums that honest customers have to pay, outdated systems miss many fraudulent cases or create too many false alarms, frustrating users and wasting resources. By building more reliable fraud detection methods, we can save money, protect consumers, and rebuild trust in financial systems.
+      </p>
+    </section>
+
+   <section>
+     
+    <h2>Preprocessing</h2>
+    <p>
+     The dataset for this project had 2 CSV files, fraudTrain and fraudTest each with transaction level data as well as labels stating if the transaction was a fraud. Every record had information like transaction date, time, card number, merchant name, merchant category, merchant location, amount, cardholder name, and cardholder address. The target variable, is_fraud, described if the transaction was fraudulent (1) or legitimate (0). Since these raw columns only provided basic details, additional processing and feature engineering was needed to identify behavioral, spatial, and temporal patterns that could identify fraudulent activity. Feature engineering was a major part of this project, because it allowed the model to capture unusualness from normal user behavior like unusually high transaction amounts, abnormal purchase times, or geographically impossible transactions.
+
+    </p>
+    <p>
+      First, we focused on time-based features as we could extract them from the preexisting trans_date_trans_time column. We identified the day of week, hour of day, weekend and nighttime variables to help capture transactions that happen at unusual times or days. Next, we engineered amount-based features to describe how each transaction compared to the cardholder’s usual spending behavior. The amt_to_median_ratio feature measured how the current transaction amount compared to the median transaction amount for that cardholder, while the amt_zscore captured how many standard deviations the amount was away from their average spending. These metrics help the model identify transactions that are abnormally large or small compared to each user’s typical spending habits.
+
+    </p>
+
+    <p>
+      We also included merchant-related features to represent a user’s relationship with different stores and categories. The new_merchant_flag feature indicated if a cardholder was shopping at a merchant for the first time, while the category_frequency feature measured how often a user made purchases in a particular merchant category. Fraudulent activity often occurs at new or rarely used merchants, so these features provide important behavioral context.
+    </p>
+
+    <p>
+      In addition, we engineered several distance-based features using the latitude and longitude of both the cardholder and merchant. The transDistance feature calculated the distance between the cardholder’s home and the merchant’s location for each transaction. The merchant_travel_distance_24hr feature measured the total distance traveled between consecutive merchants within a 24-hour window for each cardholder. Finally, the impossible_travel_flag identified whether two consecutive transactions implied an impossible travel speed (greater than 300 km/h). These geographic features are critical for detecting cases where a card is used in two far-apart locations in an unrealistically short amount of time.
+
+    </p>
+
+    <p>
+      To capture patterns in transaction frequency, we engineered several velocity-based features. These included the number of transactions made in the past hour (transaction_count_1h) and the past 24 hours (transaction_count_24h), as well as the total money spent in those same windows (total_amount_1h and total_amount_24h). We also created time_since_last_transaction, which measured the elapsed time in seconds since the user’s previous transaction. Fraudulent transactions often occur in rapid succession, so these features help the model recognize bursts of unusual activity.
+
+    </p>
+
+    <p>
+      After all features were engineered, the data was standardized and prepared for model training. Numerical variables were scaled using StandardScaler() to ensure that all features contributed equally to the model, while categorical features such as day_of_week and hour_of_day were one-hot encoded. Finally, because the dataset was imbalanced, with fraudulent transactions representing only a small fraction of all records, we applied the Synthetic Minority Oversampling Technique (SMOTE) to balance the classes and improve model performance on the smaller class.
+    </p>
+
+ </section>
+
+
+    <section>
+      <h2>Methodology</h2>
+      <p>Random Forest: 
+Random Forest was used as our baseline supervised model because it works really well with structured data and doesn’t require any intensive parameter tuning. After preprocessing the data with numerical scaling and one-hot encoding for the categorical fields, we trained the model with the features we had engineered. We used cross-validation to select reasonable values for number of trees as well as tree depth so the model didn’t overfit. We also trained with balanced class weighting to make sure that fraudulent transactions weren’t ignored during the learning. This setup allowed the model to capture any nonlinear patterns while staying efficient to train. 
+</p>
+      <p>SGD Classifier:
+SGD was implemented as a fast linear baseline to compare against our other complex models. It’s able to handle large datasets efficiently and update parameters through incremental learning. We used the same preprocessing as before, where numeric features were scaled and categorical variables were one-hot encoded before training. Class balancing was also included to make sure fraud cases had a higher weight during optimization. Since SGD has a linear decision boundary, it doesn’t capture nonlinear interactions in the data, but it did provide us a reference point to see how much the engineering features alone contributed to determining fraud or not. 
+</p>
+      <p>MLP:
+MPL was trained to look for more complex relationships between our features than our linear models could. We used the same preprocessing steps of scaling numeric variables and one-hot encoding categorical variables and then trained on the engineered feature set. Class balancing was enabled so training wasn’t dominated by the majority non-fraud class. MLP adjusts internal weights during training to combine features in different ways, so it was able to learn different patterns such as combinations of unusual spending at unfamiliar merchants. This overall gave us a more flexible model that could represent interactions not previously represented. </p>
+
+      <p>XGBoost: 
+Several steps were taken in the XGBoost Classifier implementation to improve performance and address a primary concern for the model which is overfitting. As a preprocessing step, StandardScaler was used to handle numeric data while OneHotEncoder was used to handle categorical data. For the following steps, a pipeline and grid search setup was used for hyperparameter tuning. The objective set for the XGBoost Classifier was a “binary:logistic” objective which would help predict fraudulent versus non-fraudulent transactions. For hyperparameter tuning, several combinations of learning rates, tree depths, subsamples, and colsamples by tree were evaluated over 3-fold cross-validation, creating for an appropriate computational time while also improving hyperparameter tuning. The classifications for the test data then occurred on the best combination of parameters based on best training Area Under Precision-Recall Curve score. All of these steps leveraged the XGBoost and scikit-learn libraries. 
+</p> 
+      
+
+      
+    </section>
+   <h2>Results + Discussions + Visualizations</h2>
+    <p>Across all models in this project, overall accuracy tends to be high because the dataset is imbalanced since the majority of transactions are legitimate, and only a very small fraction are fraudulent. As a result, accuracy does not reflect model performance very strongly. Instead, we focus on recall and false negatives, since missing a fraudulent transaction (a false negative) is more costly and risky than incorrectly flagging a legitimate one (a false positive). Our goal is to minimize false negatives while keeping false positives manageable.
+For recall, precision, and F1-score, we used those associated with fraudulent transactions specifically. We found that across our models, these scores were close to perfect for non-fraudulent transactions, and since our focus has been to minimize undetected fraudulent transactions, these metrics are evaluated accordingly.
+</p>
+
+    <h3>Random Forest</h3>
+
+    <p>Random Forest:
+Random forest was the first supervised model assessed for fraud classification. We found that random forest achieved a high recall of 0.85 which is strong considering our goal in identifying most fraudulent transactions and minimizing the number of missed frauds. While precision is not as important in our analysis due to our focus on minimizing false negatives, the low precision of 0.22 suggests that some legitimate transactions are incorrectly flagged. This may be acceptable in fraud detection since false positives are less costly than false negatives but could be improved. False negative rate was 15.25% which while low leaves room for improvement since this is the most costly classification for consumers and financial institutions. 
+</p>
+    <h4>Quantitative Metrics</h4>
+<table>
+  <tr><th>Metric</th><th>Value</th></tr>
+  <tr><td>True Negatives</td><td>547,141</td></tr>
+  <tr><td>False Positives</td><td>6,433</td></tr>
+  <tr><td>False Negatives</td><td>327</td></tr>
+  <tr><td>True Positives</td><td>1,818</td></tr>
+  <tr><td>True Negative Rate</td><td>98.838%</td></tr>
+  <tr><td>True Positive Rate (Recall)</td><td>84.755%</td></tr>
+  <tr><td>False Positive Rate</td><td>1.162%</td></tr>
+  <tr><td>False Negative Rate</td><td>15.245%</td></tr>
+  <tr><td>Recall</td><td>85%</td></tr>
+  <tr><td>Precision</td><td>22%</td></tr>
+  <tr><td>F1 Score</td><td>35%</td></tr>
+</table>
+
+    <figure style="text-align:center; margin:30px 0;">
+  <img src="images/randomConfusionMatrix.png" 
+       alt="Random Forest Confusion Matrix"
+       style="max-width:600px; width:90%; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <figcaption style="font-style:italic; color:#555; margin-top:8px;">
+    Figure 1. Random Forest Confusion Matrix showing classification performance.
+  </figcaption>
+</figure>
+
+    <p>The confusion matrix visualization illustrates the distribution of predictions across the four possible outcomes. The top-left cell represents the 547,141 correctly identified legitimate transactions, while the bottom-right cell shows the 1,818 correctly detected fraudulent transactions. The other cells show where the model misclassified data, false positives and false negatives. The color intensity in the matrix highlights that most predictions fall along the diagonal (true predictions), reflecting strong overall performance. Random forest is generally effective at finding fraudulent behavior but can be improved, especially in terms of false negatives. 
+</p>
+
+    <h3>Stochastic Gradient Descent</h3>
+
+
+    <p>SGD: The SGD Classifier achieved an overall accuracy of 94%, but since the dataset is heavily imbalanced (non-fraudulent transactions are greater than fraudulent), accuracy alone is not a reliable measure. Looking at recall and precision, the model achieved a recall of 0.86, meaning it correctly identified 86.48% of fraudulent transactions, but only a precision of 0.05. The false negative rate of 13.52% is an improvement to random forest but still misses some fraud cases.
+</p>
+
+    <h4>Quantitative Metrics</h4>
+
+<table style="width:60%; border-collapse: collapse; margin: 20px auto; font-size: 16px;">
+  <tr style="background-color: #f2f2f2;">
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Metric</th>
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Value</th>
+  </tr>
+  <tr><td>True Negatives</td><td>518,569</td></tr>
+  <tr><td>False Positives</td><td>35,005</td></tr>
+  <tr><td>False Negatives</td><td>290</td></tr>
+  <tr><td>True Positives</td><td>1,855</td></tr>
+  <tr><td>True Negative Rate</td><td>93.677%</td></tr>
+  <tr><td>True Positive Rate</td><td>86.48%</td></tr>
+  <tr><td>False Positive Rate</td><td>6.323%</td></tr>
+  <tr><td>False Negative Rate</td><td>13.52%</td></tr>
+  <tr><td>Recall</td><td>86%</td></tr>
+  <tr><td>Precision</td><td>5%</td></tr>
+  <tr><td>F1 Score</td><td>9.51%</td></tr>
+</table>
+<p>The SGD model performed well in identifying fraudulent transactions (high recall) but had extremely low precision meaning it generates many false alarms. This imbalance may happen because SGD is a linear model and cannot easily capture nonlinear relationships between features.</p>
+
+
+
+<figure style="text-align:center; margin:30px 0;">
+  <img src="images/SGDConfusionMatrix.png" 
+       alt="SGD Confusion Matrix"
+       style="max-width:600px; width:90%; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <figcaption style="font-style:italic; color:#555; margin-top:8px;">
+    Figure — SGD Confusion Matrix showing model predictions for fraudulent (Fraud) vs. legitimate (Not Fraud) transactions.
+  </figcaption>
+</figure>
+
+    <p>The confusion matrix visualization reveals these patterns more clearly. The top-left cell, which are true negatives, is dark blue, showing that most legitimate transactions were correctly classified. The bottom-right cell, which are true positives,  also shows a strong number of correctly detected fraudulent transactions. However, the top-right cell, which are false positives, represents the 35,005 normal transactions incorrectly flagged as fraud. Visually, this demonstrates that while SGD is effective at recognizing fraudulent behavior, it tends to over-predict fraud due to its high sensitivity and linear nature.</p>
+    
+
+    <h3>Multi layer perceptron</h3>
+    <p>The Multi-Layer Perceptron (MLP) achieved an overall accuracy of 95%, but similar to other models, accuracy is not the best indicator of performance. The model obtained a recall of 0.91 and a precision of 0.07, showing that it correctly detected 91.14% of all fraud cases while misclassifying some legitimate transactions as fraud. The false negative rate of 8.86% is the lowest among all models tested so far, indicating that the MLP was the most effective thus far at capturing fraud transactions.
+</p>
+
+    <h4>Quantitative Metrics</h4>
+
+<table style="width:60%; border-collapse: collapse; margin: 20px auto; font-size: 16px;">
+  <tr style="background-color: #f2f2f2;">
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Metric</th>
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Value</th>
+  </tr>
+  <tr><td>True Negatives</td><td>527,962</td></tr>
+  <tr><td>False Positives</td><td>25,612</td></tr>
+  <tr><td>False Negatives</td><td>190</td></tr>
+  <tr><td>True Positives</td><td>1,955</td></tr>
+  <tr><td>True Negative Rate</td><td>95.37%</td></tr>
+  <tr><td>False Positive Rate</td><td>4.63%</td></tr>
+  <tr><td>False Negative Rate</td><td>8.86%</td></tr>
+  <tr><td>Precision</td><td>7%</td></tr>
+  <tr><td>Recall</td><td>91%</td></tr>
+  <tr><td>F1 Score</td><td>13%</td></tr>
+</table>
+
+    <p>The MLP model performed best in terms of recall, detecting over 91% of fraudulent transactions, meaning it missed fewer frauds than both the Random Forest and SGD models. This strong sensitivity suggests that the neural network effectively captures complex, nonlinear relationships between variables. However, the model’s precision remains low (0.07), indicating that many non-fraudulent transactions were still flagged as fraud. This could be due to the network slightly overfitting to the minority class after SMOTE oversampling, or learning correlations from certain features.</p>
+    
+<figure style="text-align:center; margin:30px 0;">
+  <img src="images/MLPConfusionMatrix.png" 
+       alt="MLP Confusion Matrix"
+       style="max-width:600px; width:90%; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <figcaption style="font-style:italic; color:#555; margin-top:8px;">
+    Figure — MLP Confusion Matrix showing correct classifications (dark diagonal) and false predictions (lighter off-diagonals).
+  </figcaption>
+</figure>
+
+    <p>The confusion matrix visualization supports this analysis by clearly illustrating the model’s performance. The dark blue top-left cell represents the 527,962 non-fraudulent transactions that were correctly classified, indicating that the model successfully identified most legitimate cases. The bottom-right cell shows the 1,955 correctly detected fraudulent transactions, which marks a significant improvement compared to previous models. However, the lighter top-right region, representing 25,612 false positives, highlights the main weakness of the MLP model, an over-sensitivity that leads to too many legitimate transactions being incorrectly flagged as fraud. 
+</p>
+
+
+
+<h3>XGBoost</h3>
+    <p>XGBoost was determined to be the highest performing model, based primarily on having the lowest false negative rate. Reviewing the classification report, XGBoost achieved an approximate 100% accuracy which is misleading due to the imbalance of data as previously described. However, the precision of 0.78, recall of 0.90, and f1-score of 0.74 were in a good range, indicating good model performance. While our focus has been more on the recall rather than precision and f1-score due to our objective of minimizing false negative rate, the strong precision and f1-scores were early indications of strong model performance compared to our other supervised models.
+Further looking at the confusion matrix, XGBoost achieved the lowest number of false negatives where fraudulent transactions are incorrectly classified as normal transactions. Since this is the most costly case for consumers and financial institutions, achieving the lowest false negative rate of 9.091% was our final determinant that XGBoost is the strongest supervised model from those we have addressed.
+</p>
+
+    
+<figure style="text-align:center; margin:30px 0;">
+  <img src="images/xgboost.png" 
+       alt="XGBoost Confusion Matrix"
+       style="max-width:600px; width:90%; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <figcaption style="font-style:italic; color:#555; margin-top:8px;">
+    Figure — XGBoost Confusion Matrix showing strong diagonal dominance with high accuracy in both legitimate and fraud classifications.
+  </figcaption>
+</figure>
+
+<h4>Quantitative Metrics</h4>
+
+<table style="width:60%; border-collapse: collapse; margin: 20px auto; font-size: 16px;">
+  <tr style="background-color: #f2f2f2;">
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Metric</th>
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Value</th>
+  </tr>
+  <tr><td>True Negatives</td><td>540,727</td></tr>
+  <tr><td>False Positives</td><td>12,847</td></tr>
+  <tr><td>False Negatives</td><td>195</td></tr>
+  <tr><td>True Positives</td><td>1,950</td></tr>
+  <tr><td>True Negative Rate</td><td>97.679%</td></tr>
+  <tr><td>True Positive Rate (Recall)</td><td>90.909%</td></tr>
+  <tr><td>False Positive Rate</td><td>2.321%</td></tr>
+  <tr><td>False Negative Rate</td><td>9.091%</td></tr>
+  <tr><td>Precision</td><td>78%</td></tr>
+  <tr><td>Recall</td><td>90%</td></tr>
+  <tr><td>F1 Score</td><td>74%</td></tr>
+</table>
+<p>A great advantage of XGBoost is that it is able to automatically detect and apply feature importance in the model. We extracted this information quantitatively and visually to understand how our chosen features played a role in model performance.</p>
+
+    <h3>Feature Importances</h3>
+
+<figure style="text-align:center; margin:30px 0;">
+  <img src="images/featureimportantce.png" 
+       alt="XGBoost Feature Importance"
+       style="max-width:700px; width:95%; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <figcaption style="font-style:italic; color:#555; margin-top:8px;">
+    Figure — Feature Importance visualization for XGBoost highlighting the most predictive transaction-related features.
+  </figcaption>
+</figure>
+
+<table style="width:70%; border-collapse: collapse; margin: 20px auto; font-size: 15px;">
+  <tr style="background-color: #f2f2f2;">
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Feature</th>
+    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Importance</th>
+  </tr>
+  <tr><td>amt_zscore</td><td>0.294690</td></tr>
+  <tr><td>total_amount_24h</td><td>0.236537</td></tr>
+  <tr><td>amt_to_median_ratio</td><td>0.130703</td></tr>
+  <tr><td>is_nighttime</td><td>0.085182</td></tr>
+  <tr><td>hour_of_day</td><td>0.048502</td></tr>
+  <tr><td>transaction_count_24h</td><td>0.041967</td></tr>
+  <tr><td>total_amount_1h</td><td>0.038712</td></tr>
+  <tr><td>is_weekend</td><td>0.033347</td></tr>
+  <tr><td>time_since_last_transaction</td><td>0.021034</td></tr>
+  <tr><td>day_of_week</td><td>0.019294</td></tr>
+  <tr><td>category_frequency</td><td>0.014802</td></tr>
+  <tr><td>new_merchant_flag</td><td>0.014227</td></tr>
+  <tr><td>transaction_count_1h</td><td>0.007256</td></tr>
+  <tr><td>impossible_travel_flag</td><td>0.006291</td></tr>
+  <tr><td>merchant_travel_distance_24hr</td><td>0.003816</td></tr>
+  <tr><td>transDistance</td><td>0.003640</td></tr>
+</table>
+
+<p>
+Through both the feature importance table and the visualization, we observed that the most influential predictors were transaction amount–related features, 
+such as amount z-score, total amount in 24 hours, and amount-to-median ratio. 
+These metrics capture deviations from normal spending behavior and effectively highlight suspicious activity. 
+On the other hand, distance-based features like impossible travel flag, 
+merchant travel distance (24h), and transaction distance had minimal importance, suggesting location changes alone were less indicative of fraud.
+Overall, XGBoost proved to be the strongest supervised model, striking an optimal balance between recall and precision, 
+and mitigating the high financial risk of undetected fraudulent activity.
+</p>
+
+<p>
+Across all the models tested, XGBoost proved to be the most reliable, achieving a strong balance between high recall, precision, and a controlled false negative rate. 
+Now we will move on to looking at a unsupervised method.
+</p>
+<section>
+  <h2>Unsupervised Learning</h2>
+
+  <h3>Methodology</h3>
+  <p>
+    To complement the supervised models developed earlier, we incorporated 
+    K-Means clusteringas an unsupervised  technique to capture behavioral 
+    groupings within transaction data. The idea was to find natural clusters among users 
+    and transactions that share similar spending patterns, geographic characteristics, or temporal habits but doing this without 
+    using the target fraud labels. This allows the model to recognize structure in the data from patterns, something supervised learning classifiers may miss. 
+  </p>
+
+  
+<figure style="text-align:center; margin:30px 0;">
+  <img src="images/elbow.jpg" 
+       alt="Elbow Method for Optimal k"
+       style="max-width:600px; width:90%; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <figcaption style="font-style:italic; color:#555; margin-top:8px;">
+    Figure — Elbow Method for Optimal k showing the choice of k = 4 clusters.
+  </figcaption>
+</figure>
+
+  
+
+  <p>
+    After testing values of <em>k</em> between 1 and 20 using the Elbow Method, we observed 
+    the “elbow” point at k = 4, indicating four distinct clusters that best balance 
+    within-cluster compactness and between-cluster separation Each cluster likely represents a behavioral 
+    spending group—such as frequent small transactions, infrequent large purchases, or geographically 
+    dispersed activity.
+  </p>
+
+  <p>
+    We then assigned each transaction a cluster label based on its K-Means grouping and created 
+    one-hot encoded dummy variables cluster_0, cluster_1, cluster_2, cluster_3
+    to represent these groups. These new features were appended to the training and test datasets. Finally, we retrained our strongest supervised model, 
+    XGBoost, on this enhanced dataset to evaluate whether the inclusion of unsupervised cluster 
+    features improved fraud detection performance.
+  </p>
+
+  <hr>
+
+  <h3>Evaluation and Results</h3>
+
+  <table style="width:60%; border-collapse: collapse; margin: 20px auto; font-size: 16px;">
+    <tr style="background-color: #f2f2f2;">
+      <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Metric</th>
+      <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Value</th>
+    </tr>
+    <tr><td>Accuracy</td><td>98%</td></tr>
+    <tr><td>Precision (Fraud)</td><td>0.15</td></tr>
+    <tr><td>Recall (Fraud)</td><td>0.90</td></tr>
+    <tr><td>F1-Score (Fraud)</td><td>0.25</td></tr>
+    <tr><td>True Negative Rate</td><td>97.97%</td></tr>
+    <tr><td>True Positive Rate</td><td>89.88%</td></tr>
+    <tr><td>False Positive Rate</td><td>2.03%</td></tr>
+    <tr><td>False Negative Rate</td><td>10.12%</td></tr>
+  </table>
+
+  <figure style="text-align:center; margin:30px 0;">
+  <img src="images/unsupervised.jpg" 
+       alt="XGBoost with K-Means Cluster Features Confusion Matrix"
+       style="max-width:600px; width:90%; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <figcaption style="font-style:italic; color:#555; margin-top:8px;">
+    Figure — XGBoost with K-Means Cluster Features Confusion Matrix showing performance of the hybrid supervised–unsupervised model.
+  </figcaption>
+</figure>
+
+
+  <p>
+    The integrated XGBoost with K-Means Cluster Features model achieved strong results. 
+    The confusion matrix visualization (Figure — XGBoost with K-Means Cluster Features Confusion Matrix) 
+    shows 1,928 true positives and 217 false negatives, showing that the model successfully identified most 
+    fraudulent transactions while maintaining high overall accuracy. The recall for fraud improved 
+ compared to earlier models, suggesting that the cluster-based behavioral features 
+    allowed model to better differentiate between normal and suspicious activities.
+  </p>
+
+  <p>
+    The high recall of 0.90 shows that the addition of cluster features enhanced the model’s sensitivity 
+    to fraudulent patterns—critical in this domain since missing a fraudulent case (false negative) has high financial 
+    cost. Although precision dropped due to more legitimate transactions being flagged as fraud, this trade-off is 
+    acceptable in fraud detection systems, where false negatives are more costly than false positives.
+  </p>
+
+  <hr>
+
+  <h3>Interpretation and Impact</h3>
+  <p>
+    The unsupervised learning component added a valuable behavioral dimension to the fraud detection pipeline. 
+    By grouping transactions based on hidden similarities in spending behavior, 
+    K-Means clustering captured underlying structurethat supervised models alone could not.
+  </p>
+
+  <p>
+    These clusters effectively served as “profiles,” allowing the XGBoost model to contextualize individual 
+    transactions. For instance, if a 
+    cardholder who typically belongs to a “low-spending, local transactions” cluster suddenly makes a high-value, 
+    geographically distant purchase, the model can treat it as suspicious even before seeing enough labeled fraud 
+    examples of that pattern.
+  </p>
+<section>
+  <h2>Overall Model Comparison and Interpretation</h2>
+
+  <p>
+    Since the dataset is highly imbalanced, we primarily compared models using 
+    recall and false negative rate for the fraud class, and then considered 
+    precision and false positives as a secondary trade-off. Below is a qualitative comparison 
+    of the supervised models and the hybrid supervised–unsupervised approach.
+  </p>
+
+  <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:15px;">
+    <thead>
+      <tr style="background-color:#f2f2f2;">
+        <th style="padding:8px; border:1px solid #ccc; text-align:left;">Model</th>
+        <th style="padding:8px; border:1px solid #ccc; text-align:left;">Key Strengths</th>
+        <th style="padding:8px; border:1px solid #ccc; text-align:left;">Main Limitations</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;">Random Forest</td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          High overall accuracy and strong recall for fraud (~0.85). 
+          Captures nonlinear interactions between engineered features and is relatively 
+          robust without heavy tuning.
+        </td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Precision for fraud is not ideal becasue  a non-trivial number of legitimate transactions 
+          are flagged. False negative rate (~15%) leaves room for improvement in catching fraud.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;">SGD Classifier</td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Very fast, scalable linear baseline with good recall (~0.86) after class balancing. 
+          Useful as a reference to see how far nonlinear models improve over a linear boundary.
+        </td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Extremely low precision (≈0.05) and a large number of false positives, because a 
+          single linear decision surface cannot capture complex fraud patterns.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;">MLP</td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Achieves the highest recall among supervised baselines (~0.91) and the lowest 
+          false negative rate so far. Able to model complex nonlinear relationships between 
+          time, amount, merchant, and velocity features.
+        </td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Precision remains low (~0.07), so many normal transactions are flagged as fraud. 
+          The model may be slightly over-sensitive to the minority class.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;">XGBoost (Supervised)</td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Best overall balance between recall, precision, and false negative rate. 
+          Tree ensembles  capture feature interactions and provide clear 
+          feature importance scores (amount-based and velocity features dominating).
+        </td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Still misses some fraud cases and can overfit if not carefully tuned. Performance 
+          is limited by what can be expressed through the engineered features alone.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;">
+          XGBoost + K-Means Cluster Features
+        </td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Incorporating unsupervised K-Meanscluster memberships as extra features 
+          pushes recall for fraud to ~0.90 while maintaining high overall accuracy. 
+          Clusters act as behavioral profiles, helping the model identify transactions that 
+         are different from a customer’s usual spending pattern.
+        </td>
+        <td style="padding:8px; border:1px solid #ccc;">
+          Precision for fraud drops (≈0.15), so the hybrid model trades more false positives 
+          for fewer missed frauds. In many real-world fraud settings this is acceptable.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Overall, the progression of models shows a clear pattern: linear models are fast but 
+    struggle with precision while nonlinear tree-based and neural models improve recall. 
+The final hybrid approach that combines supervised learning with unsupervised 
+    behavioral clustering gives the strongest protection against missed fraud at the cost 
+    of additional false alarms. For a real financial institution, this last model would be most 
+    attractive when the priority is to minimize undetected fraudulent activity and human review 
+    can handle the increased number of flagged transactions.
+  </p>
+</section>
+
+  <section>
+  <h2>Future Work</h2>
+  <p>
+    Eventually we want to make our fraud detection system feel closer to how real financial institutions operate. 
+    One direction is to tune our models using cost-based thresholds, so that missing a fraud case is treated as 
+    much more serious than flagging a few extra normal transactions. We are also interested in adding 
+    time-based and sequence-aware models that follow a cardholder’s behavior over days or weeks, rather than 
+    looking at each transaction in isolation. 
+  </p>
+</section>
+
+
+  
+
+ 
+
+</section>
+
+    <h2>Gantt Chart</h2>
+
+     <figure style="text-align:center; margin:30px 0;">
+    <img src="images/Gantchart.jpg" 
+         alt="Project Gantt Chart"
+         style="max-width:800px; width:95%; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+    <figcaption style="font-style:italic; color:#555; margin-top:10px;">
+      Figure — Gantt chart showing project phases and task distribution across all team members.
+    </figcaption>
+  </figure>
+
+     <h3>Contribution Table</h3>
+  <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:16px;">
+    <thead>
+      <tr style="background-color:#f0f0f0;">
+        <th style="padding:10px; border:1px solid #ccc; text-align:left;">Name</th>
+        <th style="padding:10px; border:1px solid #ccc; text-align:left;">Final Contribution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding:10px; border:1px solid #ccc;">Ekta Mistry</td>
+        <td style="padding:10px; border:1px solid #ccc;">Datetime features, Xgboost implementation, Unsupervised, Final Presentation XGBoost</td>
+      </tr>
+      <tr>
+        <td style="padding:10px; border:1px solid #ccc;">Arya Bhanushali</td>
+        <td style="padding:10px; border:1px solid #ccc;">Distance features, GitHub Pages, Final Presentation Model Explanation</td>
+      </tr>
+      <tr>
+        <td style="padding:10px; border:1px solid #ccc;">Rahil Bhamani</td>
+        <td style="padding:10px; border:1px solid #ccc;">Merchant Features, Model Visualizations, Final Presentation Intro</td>
+      </tr>
+      <tr>
+        <td style="padding:10px; border:1px solid #ccc;">Kavin Uppal</td>
+        <td style="padding:10px; border:1px solid #ccc;">Velocity Features, Methodologies, Gantt Chart, Final Presentation Next-Steps/Conclusion</td>
+      </tr>
+      <tr>
+        <td style="padding:10px; border:1px solid #ccc;">Aryan Thakkar</td>
+        <td style="padding:10px; border:1px solid #ccc;">Planned Pre-processing, Model Training, Visualizations, Unsupervised, Final Presentation Model Explanation</td>
+      </tr>
+    </tbody>
+  </table>
+
+   
+    <section>
+      <h2>References</h2>
+      <ol>
+        <li>[1] R.V., K., Ganesh, S., D, M., G.R., B. and Thiruvengadam, M. (2025), Credit Card Fraud Data Analysis and Prediction Using Machine Learning Algorithms. Security and Privacy, 8: e70043. https://doi.org/10.1002/spy2.70043</li>
+        <li>[2] A. RB and S. K. KR, “Credit Card Fraud Detection Using Artificial Neural Network,” Global Transitions Proceedings, vol. 2, no. 1, pp. 35–41, Jun. 2021. doi:10.1016/j.gltp.2021.01.006 </li>
+        <li>[3] R. Ming, O. Abdelrahman, N. Innab, and M. H. Ibrahim, “Enhancing fraud detection in Auto Insurance and credit card transactions: A novel approach integrating CNNS and machine learning algorithms,” PeerJ Computer Science, vol. 10, Jun. 2024. doi:10.7717/peerj-cs.2088 </li>
+      </ol>
+    </section>
+
+  </div>
+</body>
+</html>
